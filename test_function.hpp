@@ -1,61 +1,71 @@
 #include <iostream>
 #include <limits>
 #include <cmath>
+#include <vector>
 
 using namespace std;
 
-void set_search_bound(double &upper_bound, double &lower_bound, const int func_num);
-double calculate_test_function(const double *x, const int d, const int func_num);
+class TestFunctions {
+private:
+    
+    static double Ackley(vector<double> &x, const int d);
+    static double Rastrigin(vector<double> &x, const int d);
+    static double HappyCat(vector<double> &x, const int d);
+    static double Rosenbrock(vector<double> &x, const int d);
+    static double Zakharov(vector<double> &x, const int d);
+    static double Michalewicz(vector<double> &x, const int d);
 
-double Ackley(const double *x, const int d);
-double Rastrigin(const double *x, const int d);
-double HappyCat(const double *x, const int d);
-double Rosenbrock(const double *x, const int d);
-double Zakharov(const double *x, const int d);
-double Michalewicz(const double *x, const int d);
+public:
+  
+    static vector<double> get_search_bound(const int func_num);
+    static double calculate_test_function(vector<double> &x, const int d, const int func_num);
 
-void set_search_bound(double &upper_bound, double &lower_bound, const int func_num)
+};
+
+
+vector<double> inline TestFunctions::get_search_bound(const int func_num)
 {
+    vector<double> bound;
+    double upper, lower;
+
     switch (func_num)
     {
     case 1:
-        upper_bound = 32.768;
-        lower_bound = -32.768;
+        upper = 32.768;
+        lower = -32.768;
         break;
     case 2:
-        upper_bound = 5.12;
-        lower_bound = -5.12;
+        upper = 5.12;
+        lower = -5.12;
         break;
-
     case 3:
-        upper_bound = 20.0;
-        lower_bound = -20.0;
+        upper = 20.0;
+        lower = -20.0;
         break;
-
     case 4:
-        upper_bound = 10.0;
-        lower_bound = -10.0;
+        upper = 10.0;
+        lower = -10.0;
         break;
-
     case 5:
-        upper_bound = 10.0;
-        lower_bound = -10.0;
+        upper = 10.0;
+        lower = -10.0;
         break;
-
     case 6:
-        upper_bound = M_PI;
-        lower_bound = 0.0;
+        upper = M_PI;
+        lower = 0.0;
         break;
-
     default:
-        cout << "Invalid function number" << endl;
+        std::cout << "Invalid function number" << std::endl;
         break;
     }
+    bound.push_back(lower);
+    bound.push_back(upper);
+    return bound;
 }
 
-double calculate_test_function(const double *x, const int d, const int func_num)
+double inline TestFunctions::calculate_test_function(vector<double> &x, const int d, const int func_num)
 {
-    double f = numeric_limits<double>::max();
+    double f = std::numeric_limits<double>::max();
     switch (func_num)
     {
     case 1:
@@ -64,30 +74,26 @@ double calculate_test_function(const double *x, const int d, const int func_num)
     case 2:
         f = Rastrigin(x, d);
         break;
-
     case 3:
         f = HappyCat(x, d);
         break;
-
     case 4:
         f = Rosenbrock(x, d);
         break;
-
     case 5:
         f = Zakharov(x, d);
         break;
-
     case 6:
         f = Michalewicz(x, d);
         break;
     default:
-        cout << "Invalid function number" << endl;
+        std::cout << "Invalid function number" << std::endl;
         break;
     }
     return f;
 }
 
-double Ackley(const double *x, const int d)
+double inline TestFunctions::Ackley(vector<double> &x, const int d)
 {
     double sum1 = 0.0, sum2 = 0.0;
     for (int i = 0; i < d; ++i)
@@ -98,7 +104,7 @@ double Ackley(const double *x, const int d)
     return (-20.0) * exp(-0.2 * sqrt(sum1 / double(d))) - exp(sum2 / double(d)) + 20.0 + exp(1.0);
 }
 
-double Rastrigin(const double *x, const int d)
+double inline TestFunctions::Rastrigin(vector<double> &x, const int d)
 {
     double sum1 = 0.0;
     for (int i = 0; i < d; ++i)
@@ -108,7 +114,7 @@ double Rastrigin(const double *x, const int d)
     return sum1 + 10.0 * double(d);
 }
 
-double HappyCat(const double *x, const int d)
+double inline TestFunctions::HappyCat(vector<double> &x, const int d)
 {
     double sum1 = 0.0, sum2 = 0.0;
     for (int i = 0; i < d; ++i)
@@ -119,7 +125,7 @@ double HappyCat(const double *x, const int d)
     return pow(fabs(sum1 - double(d)), 0.25) + (0.5 * sum1 + sum2) / double(d) + 0.5;
 }
 
-double Rosenbrock(const double *x, const int d)
+double inline TestFunctions::Rosenbrock(vector<double> &x, const int d)
 {
     double sum1 = 0.0;
     for (int i = 0; i < d - 1; ++i)
@@ -129,7 +135,7 @@ double Rosenbrock(const double *x, const int d)
     return sum1;
 }
 
-double Zakharov(const double *x, const int d)
+double inline TestFunctions::Zakharov(vector<double> &x, const int d)
 {
     double sum1 = 0.0, sum2 = 0.0;
     for (int i = 0; i < d; ++i)
@@ -140,7 +146,7 @@ double Zakharov(const double *x, const int d)
     return sum1 + pow(sum2, 2) + pow(sum2, 4);
 }
 
-double Michalewicz(const double *x, const int d)
+double inline TestFunctions::Michalewicz(vector<double> &x, const int d)
 {
     double sum1 = 0.0;
     for (int i = 0; i < d; ++i)
@@ -149,3 +155,4 @@ double Michalewicz(const double *x, const int d)
     }
     return sum1 * (-1);
 }
+
