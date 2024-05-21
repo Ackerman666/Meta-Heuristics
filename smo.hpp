@@ -6,8 +6,15 @@
 #include <chrono>
 #include "config.hpp"
 #include "test_function.hpp"
+#include "levy_flight.hpp"
 
 using namespace std;
+
+
+void inline bound_check(double &val, double ub, double lb){
+    val = (val < lb) ? lb : val;
+    val = (val > ub) ? ub : val;
+}
 
 typedef vector<double> solution;
 random_device rd;
@@ -31,7 +38,6 @@ int rand_int(int min, int max) {
 
 
 double inline rouletteProb(double &f, double &max_f){
-    //cout<< 0.9 * (f / max_f) + 0.3 <<endl;
     return 0.9 * (f / max_f) + 0.1;
 }
 
@@ -66,7 +72,7 @@ class SMO
 public:
     SMO(int ll, int gl, int ps, double pr);
 
-    double run(string func, int d, int r);
+    double run(string func, int d, int r, int evals);
 
 private:
 
@@ -77,7 +83,7 @@ private:
      * population_size
      * current local group count
     */ 
-    int local_limit, global_limit, gl_count, population_size, lg_size;
+    int local_limit, global_limit, gl_count, population_size, lg_size, num_evals;
     // perturbation rate
     double pr;
     // population
@@ -97,19 +103,18 @@ private:
     void init(double ub, double lb, int d, string objf);
 
 
-    void localPhase(int d, string objf);
-    void globalPhase(int d, string objf);
+    void localPhase(int d, string objf, double ub, double lb);
+    void globalPhase(int d, string objf, double ub, double lb);
     void globalLearning();
     void localLearning();
     void localDecision(int d, double ub, double lb);
     void globalDecision();
 
-    // update fitness value for each spider monkey
-    void   updateFitness(int from, int end, int d, string objf);
     double calculateFitness(double funv);
 
     // select group partner excluded "idx"
     int partnerSelect(LocalGroup &lg, int idx);
+
 
 };
 
@@ -130,21 +135,9 @@ int inline SMO::partnerSelect(LocalGroup &lg, int idx){
     return select;
 }
 
-/*
-void inline SMO::updateFitness(int from, int end, int d, string objf){
-
-    for(int i = from ; i <= end ; i++){
-        double funv = TestFunctions::calculate_test_function(spider_monkeys[i], d, TEST_FUNCTION[objf]);
-        double fit = calculateFitness(funv);
-        if(fit > fitness[i])
-            fitness[i] = fit;
-    }
-
-    return;
-}
-*/
 
 double inline SMO::calculateFitness(double funv){
+    //--num_evals;
     if (funv >= 0)
         return 1 / (funv + 1);
     else
@@ -171,48 +164,16 @@ void inline SMO::init(double ub, double lb, int d, string objf){
     }
 
     for(int i=0 ; i<population_size ; i++){
-        double funv = TestFunctions::calculate_test_function(spider_monkeys[i], d, TEST_FUNCTION[objf]);
-        double fit = calculateFitness(funv);
-        fitness.push_back(fit);
+        if (num_evals > 0){
+            double funv = TestFunctions::calculate_test_function(spider_monkeys[i], d, TEST_FUNCTION[objf]);
+            double fit = calculateFitness(funv);
+            fitness.push_back(fit);
+        }
     }
 
     LocalGroup local(0, population_size-1);
     local_group[0] = local;
     lg_size = 1;
-
-
-
-
-    /*
-    //todo : look output
-    for(int i=0 ; i<population_size ; i++){
-
-        cout<<i<<" : [ ";
-
-        for(int j=0 ; j<d ; j++){
-
-            cout<<spider_monkeys[i][j]<<", ";
-
-        }
-        cout<<" ] "<<endl;
-    
-    }
-    */
-    
-    //
-
-    /*
-    //todo : look fitness
-    cout<<"fitness : \n";
-    for(int i=0 ; i<population_size ; i++){
-
-        cout<<i<<" : [ ";
-        cout<<fitness[i];
-        cout<<" ] "<<endl;
-    }
-    */
-    
-
 
 }
 
@@ -234,8 +195,8 @@ void inline SMO::globalLearning(){
         global_leader = tmp;
     }
 
-    /*
-    // for test
+    
+    /* for test
     int len = global_leader.size();
     cout<<"Global leader : [ ";
     for(auto i=0 ; i<len ; i++){
@@ -269,7 +230,7 @@ void inline SMO::localLearning(){
     }
 }
 
-void inline SMO::globalPhase(int d, string objf){
+void inline SMO::globalPhase(int d, string objf, double ub, double lb){
 
 
     //each group do globalPhase
@@ -294,6 +255,7 @@ void inline SMO::globalPhase(int d, string objf){
                     tmp[sd] = tmp[sd] + ur1 * (global_leader[sd] - tmp[sd])  + ur2 * (spider_monkeys[partner_idx][sd] - tmp[sd]);
                     count += 1;
 
+                    bound_check(tmp[sd], ub, lb);
                     tmp_group.push_back(tmp);
                     
                 }
@@ -302,20 +264,21 @@ void inline SMO::globalPhase(int d, string objf){
         }
 
         for(int i=0, j=local->from ; j<=local->end ; j++, i++){
-            double funv = TestFunctions::calculate_test_function(tmp_group[i], d, TEST_FUNCTION[objf]);
-            double fit = calculateFitness(funv);
+            if (num_evals > 0){
+                double funv = TestFunctions::calculate_test_function(tmp_group[i], d, TEST_FUNCTION[objf]);
+                double fit = calculateFitness(funv);
 
-            //et higher fitness, update position
-            if(fitness[j] < fit){
-                fitness[j] = fit;
-                spider_monkeys[j] = tmp_group[i];
+                //get higher fitness, update position
+                if(fitness[j] < fit){
+                    fitness[j] = fit;
+                    spider_monkeys[j] = tmp_group[i];
+                }
             }
         }
-       
     }
 }
 
-void inline SMO::localPhase(int d, string objf){
+void inline SMO::localPhase(int d, string objf, double ub, double lb){
 
     for(int i=0 ; i<lg_size ; i++){
 
@@ -332,20 +295,20 @@ void inline SMO::localPhase(int d, string objf){
                 if(ur1 >= pr){
                     int partner_idx = partnerSelect(local_group[i], j);
                     tmp[k] = tmp[k] + ur1 * (spider_monkeys[local->leader_idx][k] - tmp[k]) + ur2 * (spider_monkeys[partner_idx][k] - tmp[k]);
-                    //spider_monkeys[j] = tmp;
+                }
+                bound_check(tmp[k], ub, lb);
+            }
+
+            if (num_evals > 0){
+                double funv = TestFunctions::calculate_test_function(tmp, d, TEST_FUNCTION[objf]);
+                double fit = calculateFitness(funv);
+                
+                // get higher fitness, update position
+                if(fitness[j] < fit){
+                    fitness[j] = fit;
+                    spider_monkeys[j] = tmp;
                 }
             }
-
-            double funv = TestFunctions::calculate_test_function(tmp, d, TEST_FUNCTION[objf]);
-            double fit = calculateFitness(funv);
-            
-            // get higher fitness, update position
-            if(fitness[j] < fit){
-                fitness[j] = fit;
-                spider_monkeys[j] = tmp;
-            }
-            
-
         }       
     }
 
@@ -369,11 +332,12 @@ void inline SMO::localDecision(int d, double ub, double lb){
 
                     double ur1 = uniform_rand(0,1);
                     
-                    //todo 亂數部份論文是重新生成一個
-                    if(ur1 >= pr)
+                    if(ur1 >= pr){
                         spider_monkeys[j][k] = lb + ur1  * (ub - lb);
+                    }
                     else
                         spider_monkeys[j][k] = spider_monkeys[j][k] + ur1 * (global_leader[k] - spider_monkeys[j][k]) + ur1 * (spider_monkeys[j][k] - spider_monkeys[local->leader_idx][k]);
+                    bound_check(spider_monkeys[j][k], ub, lb);
                 }
             
             }
@@ -410,37 +374,33 @@ void inline SMO::globalDecision(){
 
 
 
-
-
 /* run SMO by "func" as optimization object
  *
  * @ epoch : run times
  * @ evalutions : evalutions times per run
  * @ func : object function
  * @ d : dimension of object funciton
+ * @ evals : evalution times per run 
  *  
  */
-double inline SMO::run(string objf, int d, int r){
+double inline SMO::run(string objf, int d, int r, int evals){
+
+    num_evals = evals;
+    //int evalutions = 20;
 
     vector<double> bound = TestFunctions::get_search_bound(TEST_FUNCTION[objf]);
     init(bound[0], bound[1], d, objf);
     globalLearning();
     localLearning();
 
-    int evalutions = BASE_EVALUATION * d;
-    //int evalutions = 20;
-
-
-    for(int i=1 ; i<=evalutions ; i++){
-        localPhase(d, objf);
-        globalPhase(d, objf);
+    while(num_evals > 0){
+        localPhase(d, objf, bound[0], bound[1]);
+        globalPhase(d, objf, bound[0], bound[1]);
         globalLearning();
         localLearning();
         localDecision(d, bound[0], bound[1]);
         globalDecision();
-
-        //cout<<"[ "<<i<<" ] : "<<TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf])<<endl;
-
+        --num_evals;
     }
 
     double optimize_val = TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf]);
@@ -456,3 +416,4 @@ double inline SMO::run(string objf, int d, int r){
 
     return optimize_val;
 }
+
