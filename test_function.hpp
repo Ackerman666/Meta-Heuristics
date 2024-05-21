@@ -14,6 +14,11 @@ private:
     static double Rosenbrock(vector<double> &x, const int d);
     static double Zakharov(vector<double> &x, const int d);
     static double Michalewicz(vector<double> &x, const int d);
+    static double Schwefel(vector<double> &x, const int d);
+    static double BentCigar(vector<double> &x, const int d);
+    static double DropWave(vector<double> &x, const int d);
+    static double Step(vector<double> &x, const int d);
+
 
 public:
   
@@ -54,12 +59,28 @@ vector<double> inline TestFunctions::get_search_bound(const int func_num)
         upper = M_PI;
         lower = 0.0;
         break;
+    case 7:
+        upper = 500.0;
+        lower = -500.0;
+        break;
+    case 8:
+        upper = 100;
+        lower = -100;
+        break;
+    case 9:
+        upper = 5.12;
+        lower = -5.12;
+        break;
+    case 10:
+        upper = 100;
+        lower = -100;
+        break;
     default:
         std::cout << "Invalid function number" << std::endl;
         break;
     }
-    bound.push_back(lower);
     bound.push_back(upper);
+    bound.push_back(lower);
     return bound;
 }
 
@@ -85,6 +106,18 @@ double inline TestFunctions::calculate_test_function(vector<double> &x, const in
         break;
     case 6:
         f = Michalewicz(x, d);
+        break;
+    case 7:
+        f = Schwefel(x, d);          
+        break;
+    case 8:
+        f = BentCigar(x, d);
+        break;
+    case 9:
+        f = DropWave(x, d);
+        break;
+    case 10:
+        f = Step(x, d);
         break;
     default:
         std::cout << "Invalid function number" << std::endl;
@@ -154,5 +187,45 @@ double inline TestFunctions::Michalewicz(vector<double> &x, const int d)
         sum1 += sin(x[i]) * pow(sin((double(i + 1) * x[i] * x[i]) / M_PI), 20.0);
     }
     return sum1 * (-1);
+}
+
+double TestFunctions::Schwefel(vector<double> &x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 0; i < d; ++i)
+    {
+        sum1 += x[i] * sin(sqrt(fabs(x[i])));
+    }
+    return 418.9829 * double(d) - sum1;
+}
+
+double TestFunctions::BentCigar(vector<double> &x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 1; i < d; ++i)
+    {
+        sum1 += x[i] * x[i];
+    }
+    return x[0] * x[0] + pow(10.0, 6) * sum1;
+}
+
+double TestFunctions::DropWave(vector<double> &x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 0; i < d; ++i)
+    {
+        sum1 += x[i] * x[i];
+    }
+    return 1.0 - ((1.0 + cos(12.0 * sqrt(sum1))) / (0.5 * sum1 + 2.0));
+}
+
+double TestFunctions::Step(vector<double> &x, const int d)
+{
+    double sum1 = 0.0;
+    for (int i = 0; i < d; ++i)
+    {
+        sum1 += floor(x[i] + 0.5) * floor(x[i] + 0.5);
+    }
+    return sum1;
 }
 
