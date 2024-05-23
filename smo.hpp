@@ -10,6 +10,14 @@
 
 using namespace std;
 
+/*
+void inline build_levy_table(){
+    for (int i=0 ; i<1000 ; i++)
+        levy_table[i] = levy(2);
+}
+*/
+
+double levy_table[1000];
 
 void inline bound_check(double &val, double ub, double lb){
     val = (val < lb) ? lb : val;
@@ -21,7 +29,7 @@ random_device rd;
 mt19937 gen(rd());
 
 // random floating number in [min, max]
-double uniform_rand(int begin, int end){
+double inline uniform_rand(int begin, int end){
 
     uniform_real_distribution<> dis(begin, end);
     return dis(gen);
@@ -29,7 +37,7 @@ double uniform_rand(int begin, int end){
 }
 
 // random integer in [min, max]
-int rand_int(int min, int max) {
+int inline rand_int(int min, int max) {
 
     std::uniform_int_distribution<> dis(min, max);
     return dis(gen); 
@@ -70,7 +78,7 @@ inline void LocalGroup::init(int f, int ed){
 class SMO
 {
 public:
-    SMO(int ll, int gl, int ps, double pr);
+    SMO(int ll, int gl, int ps, double pr, bool l);
 
     double run(string func, int d, int r, int evals);
 
@@ -86,6 +94,10 @@ private:
     int local_limit, global_limit, gl_count, population_size, lg_size, num_evals;
     // perturbation rate
     double pr;
+
+    //follow levy flight or not
+    bool levy;
+
     // population
     vector<solution> spider_monkeys;
 
@@ -119,11 +131,12 @@ private:
 };
 
 
-inline SMO::SMO(int ll, int gl, int ps, double pr){
+inline SMO::SMO(int ll, int gl, int ps, double pr, bool l = false){
     local_limit = ll;
     global_limit = gl;
     population_size = ps;
     pr = pr;
+    levy = l;
 }
 
 
@@ -295,8 +308,11 @@ void inline SMO::localPhase(int d, string objf, double ub, double lb){
                 if(ur1 >= pr){
                     int partner_idx = partnerSelect(local_group[i], j);
                     tmp[k] = tmp[k] + ur1 * (spider_monkeys[local->leader_idx][k] - tmp[k]) + ur2 * (spider_monkeys[partner_idx][k] - tmp[k]);
+                    //tmp[k] += levy_table[rand_int(0,999)];
+                    // float num is slow (why ?)
+                    //tmp[k] += levy(3);
+                    bound_check(tmp[k], ub, lb);
                 }
-                bound_check(tmp[k], ub, lb);
             }
 
             if (num_evals > 0){
@@ -316,30 +332,28 @@ void inline SMO::localPhase(int d, string objf, double ub, double lb){
 
 void inline SMO::localDecision(int d, double ub, double lb){
 
-
     for(int i=0 ; i<lg_size ; i++){
 
         LocalGroup *local = &local_group[i];
-
         // fall into local minimun
         if(local->ll_count > local_limit){
-
             local->ll_count = 0;
-
             for(int j=local->from ; j<=local->end ; j++){
-
                 for(int k=0 ; k<d ; k++){
-
                     double ur1 = uniform_rand(0,1);
                     
-                    if(ur1 >= pr){
+                    if(ur1 >= pr)
                         spider_monkeys[j][k] = lb + ur1  * (ub - lb);
-                    }
-                    else
+                    else{
                         spider_monkeys[j][k] = spider_monkeys[j][k] + ur1 * (global_leader[k] - spider_monkeys[j][k]) + ur1 * (spider_monkeys[j][k] - spider_monkeys[local->leader_idx][k]);
+                        if(levy){
+                            spider_monkeys[j][k] += levy_flight(1);
+                            cout << "levy~" << endl;
+                        }
+                    }
+                        
                     bound_check(spider_monkeys[j][k], ub, lb);
                 }
-            
             }
         }
     }
@@ -384,6 +398,10 @@ void inline SMO::globalDecision(){
  *  
  */
 double inline SMO::run(string objf, int d, int r, int evals){
+
+    //build_levy_table();
+    //for(int i=0 ; i<1000 ; i++)
+    //cout<<levy_table[i]<<endl;
 
     num_evals = evals;
     //int evalutions = 20;
