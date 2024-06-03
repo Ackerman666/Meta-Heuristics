@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <vector>
 #include <unordered_map>
@@ -10,26 +11,26 @@
 
 using namespace std;
 
-/*
-void inline build_levy_table(){
-    for (int i=0 ; i<1000 ; i++)
-        levy_table[i] = levy(2);
+namespace smo{
+// record current optimal value per setting evalutions
+static vector<double> RECORD;
+
+typedef vector<double> solution;
+static random_device rd;
+static mt19937 gen(rd());
+
+static void inline recordVal(double value){
+    RECORD.push_back(value);
 }
-*/
 
-double levy_table[1000];
 
-void inline bound_check(double &val, double ub, double lb){
+static void inline bound_check(double &val, double ub, double lb){
     val = (val < lb) ? lb : val;
     val = (val > ub) ? ub : val;
 }
 
-typedef vector<double> solution;
-random_device rd;
-mt19937 gen(rd());
-
 // random floating number in [min, max]
-double inline uniform_rand(int begin, int end){
+static double inline uniform_rand(int begin, int end){
 
     uniform_real_distribution<> dis(begin, end);
     return dis(gen);
@@ -37,7 +38,7 @@ double inline uniform_rand(int begin, int end){
 }
 
 // random integer in [min, max]
-int inline rand_int(int min, int max) {
+static int inline rand_int(int min, int max) {
 
     std::uniform_int_distribution<> dis(min, max);
     return dis(gen); 
@@ -45,7 +46,7 @@ int inline rand_int(int min, int max) {
 
 
 
-double inline rouletteProb(double &f, double &max_f){
+static double inline rouletteProb(double &f, double &max_f){
     return 0.9 * (f / max_f) + 0.1;
 }
 
@@ -80,7 +81,7 @@ class SMO
 public:
     SMO(int ll, int gl, int ps, double pr, bool l);
 
-    double run(string func, int d, int r, int evals);
+    double run(string func, int d, int r, int evals, unordered_map<int, vector<double>> &record);
 
 private:
 
@@ -102,6 +103,7 @@ private:
     vector<solution> spider_monkeys;
 
     // global leader
+
     double global_leader_fitness;
     solution global_leader;
 
@@ -120,7 +122,7 @@ private:
     void globalLearning();
     void localLearning();
     void localDecision(int d, double ub, double lb);
-    void globalDecision();
+    void globalDecision(double ub, double lb);
 
     double calculateFitness(double funv);
 
@@ -131,11 +133,11 @@ private:
 };
 
 
-inline SMO::SMO(int ll, int gl, int ps, double pr, bool l = false){
+inline SMO::SMO(int ll, int gl, int ps, double p_r, bool l){
     local_limit = ll;
     global_limit = gl;
     population_size = ps;
-    pr = pr;
+    pr = p_r;
     levy = l;
 }
 
@@ -150,12 +152,10 @@ int inline SMO::partnerSelect(LocalGroup &lg, int idx){
 
 
 double inline SMO::calculateFitness(double funv){
-    //--num_evals;
     if (funv >= 0)
         return 1 / (funv + 1);
     else
         return 1 + fabs(funv);
-
 }
 
 void inline SMO::init(double ub, double lb, int d, string objf){
@@ -177,10 +177,12 @@ void inline SMO::init(double ub, double lb, int d, string objf){
     }
 
     for(int i=0 ; i<population_size ; i++){
-        if (num_evals > 0){
+        if (num_evals-- > 0){
             double funv = TestFunctions::calculate_test_function(spider_monkeys[i], d, TEST_FUNCTION[objf]);
             double fit = calculateFitness(funv);
             fitness.push_back(fit);
+            if (num_evals % RECORD_PER_EVALUATION == 0)
+                recordVal(TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf]));
         }
     }
 
@@ -261,23 +263,19 @@ void inline SMO::globalPhase(int d, string objf, double ub, double lb){
                 solution tmp = spider_monkeys[j];
                 //ur1 < (rouletteProb(fitness[j], global_leader_fitness))
                 if(ur1 < rouletteProb(fitness[j], global_leader_fitness) + 0.3){
-                    
                     // selected dimension
                     int sd = rand_int(0, d-1);
                     int partner_idx = partnerSelect(local_group[i], j);
                     tmp[sd] = tmp[sd] + ur1 * (global_leader[sd] - tmp[sd])  + ur2 * (spider_monkeys[partner_idx][sd] - tmp[sd]);
-                    count += 1;
-
                     bound_check(tmp[sd], ub, lb);
+                    count += 1;
                     tmp_group.push_back(tmp);
-                    
                 }
-
             }
         }
 
         for(int i=0, j=local->from ; j<=local->end ; j++, i++){
-            if (num_evals > 0){
+            if (num_evals-- > 0){
                 double funv = TestFunctions::calculate_test_function(tmp_group[i], d, TEST_FUNCTION[objf]);
                 double fit = calculateFitness(funv);
 
@@ -286,6 +284,8 @@ void inline SMO::globalPhase(int d, string objf, double ub, double lb){
                     fitness[j] = fit;
                     spider_monkeys[j] = tmp_group[i];
                 }
+                if (num_evals % RECORD_PER_EVALUATION == 0)
+                    recordVal(TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf]));
             }
         }
     }
@@ -308,14 +308,11 @@ void inline SMO::localPhase(int d, string objf, double ub, double lb){
                 if(ur1 >= pr){
                     int partner_idx = partnerSelect(local_group[i], j);
                     tmp[k] = tmp[k] + ur1 * (spider_monkeys[local->leader_idx][k] - tmp[k]) + ur2 * (spider_monkeys[partner_idx][k] - tmp[k]);
-                    //tmp[k] += levy_table[rand_int(0,999)];
-                    // float num is slow (why ?)
-                    //tmp[k] += levy(3);
                     bound_check(tmp[k], ub, lb);
                 }
             }
 
-            if (num_evals > 0){
+            if (num_evals-- > 0){
                 double funv = TestFunctions::calculate_test_function(tmp, d, TEST_FUNCTION[objf]);
                 double fit = calculateFitness(funv);
                 
@@ -324,6 +321,8 @@ void inline SMO::localPhase(int d, string objf, double ub, double lb){
                     fitness[j] = fit;
                     spider_monkeys[j] = tmp;
                 }
+                if (num_evals % RECORD_PER_EVALUATION == 0)
+                    recordVal(TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf]));
             }
         }       
     }
@@ -341,17 +340,16 @@ void inline SMO::localDecision(int d, double ub, double lb){
             for(int j=local->from ; j<=local->end ; j++){
                 for(int k=0 ; k<d ; k++){
                     double ur1 = uniform_rand(0,1);
-                    
-                    if(ur1 >= pr)
+                    if(ur1 >= RANDOM_LOCATION_RATE)
                         spider_monkeys[j][k] = lb + ur1  * (ub - lb);
                     else{
                         spider_monkeys[j][k] = spider_monkeys[j][k] + ur1 * (global_leader[k] - spider_monkeys[j][k]) + ur1 * (spider_monkeys[j][k] - spider_monkeys[local->leader_idx][k]);
+                        
                         if(levy){
                             spider_monkeys[j][k] += levy_flight(1);
-                            cout << "levy~" << endl;
                         }
-                    }
                         
+                    }
                     bound_check(spider_monkeys[j][k], ub, lb);
                 }
             }
@@ -359,14 +357,12 @@ void inline SMO::localDecision(int d, double ub, double lb){
     }
 }
 
-void inline SMO::globalDecision(){
+void inline SMO::globalDecision(double ub, double lb){
 
     if(gl_count > global_limit){
 
         gl_count = 0;
-
         if(lg_size < MAX_GROUP_SIZE){
-
             lg_size = lg_size << 1;
             int interval = population_size / lg_size;
 
@@ -374,15 +370,15 @@ void inline SMO::globalDecision(){
                 LocalGroup local(from, from+interval-1);
                 local_group[i] = local;
             }
-
         }
+
         else{
+
             lg_size = 1;
             LocalGroup local(0, population_size-1);
             local_group[0] = local;
         }
         localLearning();
-
     }
 }
 
@@ -397,16 +393,13 @@ void inline SMO::globalDecision(){
  * @ evals : evalution times per run 
  *  
  */
-double inline SMO::run(string objf, int d, int r, int evals){
+double inline SMO::run(string objf, int d, int r, int evals, unordered_map<int, vector<double>> &record){
 
-    //build_levy_table();
-    //for(int i=0 ; i<1000 ; i++)
-    //cout<<levy_table[i]<<endl;
-
+   
+    RECORD.clear();
     num_evals = evals;
-    //int evalutions = 20;
-
     vector<double> bound = TestFunctions::get_search_bound(TEST_FUNCTION[objf]);
+
     init(bound[0], bound[1], d, objf);
     globalLearning();
     localLearning();
@@ -417,9 +410,10 @@ double inline SMO::run(string objf, int d, int r, int evals){
         globalLearning();
         localLearning();
         localDecision(d, bound[0], bound[1]);
-        globalDecision();
-        --num_evals;
+        globalDecision(bound[0], bound[1]);
     }
+
+    record[r] = RECORD;
 
     double optimize_val = TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf]);
     cout<<"Run "<<r<<", Get optimize value : "<<optimize_val<<endl;
@@ -434,4 +428,17 @@ double inline SMO::run(string objf, int d, int r, int evals){
 
     return optimize_val;
 }
+}
 
+
+/*
+bool is_the_same(solution &a, solution &global_leader){
+
+    int d = global_leader.size();
+    for(int i=0 ; i<d ; i++){
+        if(a[i] != global_leader[i])
+            return false;
+    }
+    return true;
+}
+*/
