@@ -24,7 +24,7 @@ int main(){
 
             for(int k=0 ; k<3 ; k++){
                 outputFile[k].open(folder[k] + FUNCTION_LIST[i]+ "d" + to_string(dimensions) + ".txt");
-                auto start = high_resolution_clock::now(); // 開始計時
+                auto start = high_resolution_clock::now();
                 
                 unordered_map<int, vector<double>> record;
 
@@ -67,15 +67,8 @@ int main(){
                     outputFile[k] << "evalution : " << (e+1) * RECORD_PER_EVALUATION << " -----> " << acc << "  (optimal value)" << endl;
                 }
                 
-                /*
-                for(int v=0 ; v<record[1].size() ; v++)
-                    cout << "evalutions : " << (v+1) * RECORD_PER_EVALUATION << " -----> " << record[1][v] << endl;
-                */
-
-            
-
-                auto stop = high_resolution_clock::now(); // 結束計時
-                auto duration = duration_cast<milliseconds>(stop - start); // 計算執行時間
+                auto stop = high_resolution_clock::now();
+                auto duration = duration_cast<milliseconds>(stop - start);
                 outputFile[k] << "execution time : " << duration.count() << " (milliseconds)" << endl;
                 outputFile[k].close();
             }

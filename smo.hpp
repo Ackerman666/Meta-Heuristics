@@ -210,16 +210,6 @@ void inline SMO::globalLearning(){
         global_leader = tmp;
     }
 
-    
-    /* for test
-    int len = global_leader.size();
-    cout<<"Global leader : [ ";
-    for(auto i=0 ; i<len ; i++){
-        cout<<global_leader[i]<<", ";
-    }
-    cout<<" ] fitness : "<<global_leader_fitness<<endl;
-    */
-    
 }
 
 void inline SMO::localLearning(){
@@ -301,7 +291,7 @@ void inline SMO::localPhase(int d, string objf, double ub, double lb){
             
             solution tmp = spider_monkeys[j];
 
-            // 抓最新的位置可能為何
+            // local phase update step
             for(int k=0 ; k<d ; k++){
                 double ur1 = uniform_rand(0,1), ur2 = uniform_rand(-1,1);
 
@@ -417,28 +407,6 @@ double inline SMO::run(string objf, int d, int r, int evals, unordered_map<int, 
 
     double optimize_val = TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf]);
     cout<<"Run "<<r<<", Get optimize value : "<<optimize_val<<endl;
-    /*
-    int len = global_leader.size();
-    cout<<"Global leader : [ ";
-    for(auto i=0 ; i<len ; i++){
-        cout<<global_leader[i]<<", ";
-    }
-    cout<<" ] fitness : "<<global_leader_fitness<<endl;
-    */
-
     return optimize_val;
 }
 }
-
-
-/*
-bool is_the_same(solution &a, solution &global_leader){
-
-    int d = global_leader.size();
-    for(int i=0 ; i<d ; i++){
-        if(a[i] != global_leader[i])
-            return false;
-    }
-    return true;
-}
-*/

@@ -233,16 +233,6 @@ void inline ASMO::globalLearning(){
         global_leader = tmp;
     }
 
-    
-    /* for test
-    int len = global_leader.size();
-    cout<<"Global leader : [ ";
-    for(auto i=0 ; i<len ; i++){
-        cout<<global_leader[i]<<", ";
-    }
-    cout<<" ] fitness : "<<global_leader_fitness<<endl;
-    */
-    
 }
 
 void inline ASMO::localLearning(){
@@ -328,7 +318,7 @@ void inline ASMO::localPhase(int d, string objf, double ub, double lb){
             
             solution tmp = spider_monkeys[j];
 
-            // 抓最新的位置可能為何
+            // local phase update step
             for(int k=0 ; k<d ; k++){
                 double ur1 = uniform_rand(0,1), ur2 = uniform_rand(-1,1);
 
@@ -370,14 +360,7 @@ void inline ASMO::localDecision(int d, double ub, double lb){
                     if(ur1 >= RANDOM_LOCATION_RATE)
                         spider_monkeys[j][k] = lb + ur1  * (ub - lb);
                     else{
-                        spider_monkeys[j][k] = spider_monkeys[j][k] + ur1 * (global_leader[k] - spider_monkeys[j][k]) + ur1 * (spider_monkeys[j][k] - spider_monkeys[local->leader_idx][k]);
-                        
-                        /*
-                        if(levy){
-                            spider_monkeys[j][k] += levy_flight(1);
-                        }
-                        */
-                        
+                        spider_monkeys[j][k] = spider_monkeys[j][k] + ur1 * (global_leader[k] - spider_monkeys[j][k]) + ur1 * (spider_monkeys[j][k] - spider_monkeys[local->leader_idx][k]); 
                     }
                     bound_check(spider_monkeys[j][k], ub, lb);
                 }
@@ -440,54 +423,17 @@ double inline ASMO::run(string objf, int d, int r, int evals, unordered_map<int,
         localLearning();
         localDecision(d, bound[0], bound[1]);
         globalDecision(bound[0], bound[1]);
-
-
-        /*
-        for(int i=0 ; i<lg_size ; i++){
-            LocalGroup *local = &local_group[i];
-            local->sort(spider_monkeys, fitness);
-        }
-
-        for(int i=0 ; i<fitness.size() ; i++)
-            cout<<fitness[i]<<" ";
-
-        cout<<endl;
-        */
-
-
-
-
     }
 
     record[r] = RECORD;
 
     double optimize_val = TestFunctions::calculate_test_function(global_leader, d, TEST_FUNCTION[objf]);
     cout<<"Run "<<r<<", Get optimize value : "<<optimize_val<<endl;
-    /*
-    int len = global_leader.size();
-    cout<<"Global leader : [ ";
-    for(auto i=0 ; i<len ; i++){
-        cout<<global_leader[i]<<", ";
-    }
-    cout<<" ] fitness : "<<global_leader_fitness<<endl;
-    */
-
     return optimize_val;
 }
 
 }
 
-/*
-bool is_the_same(solution &a, solution &global_leader){
-
-    int d = global_leader.size();
-    for(int i=0 ; i<d ; i++){
-        if(a[i] != global_leader[i])
-            return false;
-    }
-    return true;
-}
-*/
 
 
 
