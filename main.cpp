@@ -3,6 +3,7 @@
 #include <chrono>
 #include <map>
 #include <vector>
+#include <filesystem>
 #include "smo.hpp"
 #include "asmo.hpp"
 
@@ -15,7 +16,11 @@ using namespace std::chrono;
 int main(){
 
     std::ofstream outputFile[3];
-    string folder[3] = {"smo_original/", "smo_levy/", "asmo/"};
+    string folders[3] = {"smo_original/", "smo_levy/", "asmo/"};
+
+    for (auto& folder : folders) {
+        std::filesystem::create_directories(folder);
+    }
 
     for(int i=0 ; i<FUNCTION_LIST.size() ; i++){
         for(int d=0 ; d<DIMENSION.size() ; d++){
@@ -23,7 +28,7 @@ int main(){
             int evalutions = dimensions * BASE_EVALUATION;
 
             for(int k=0 ; k<3 ; k++){
-                outputFile[k].open(folder[k] + FUNCTION_LIST[i]+ "d" + to_string(dimensions) + ".txt");
+                outputFile[k].open(folders[k] + FUNCTION_LIST[i]+ "d" + to_string(dimensions) + ".txt");
                 auto start = high_resolution_clock::now();
                 
                 unordered_map<int, vector<double>> record;
